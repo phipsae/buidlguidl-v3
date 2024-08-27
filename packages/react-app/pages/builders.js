@@ -39,6 +39,7 @@ import StreamTableCell from "../components/StreamTableCell";
 import MetaSeo from "../components/MetaSeo";
 import BuilderFlags from "../components/builder/BuilderFlags";
 import useCustomColorModes from "../hooks/useCustomColorModes";
+import { getAllCohorts, getAllBuilders } from "../data/api/builder";
 
 const serverPath = "/builders";
 
@@ -132,16 +133,61 @@ const isValueOnEnsOrSocials = (builder, filterValue) => {
 
 export default function BuilderListView({ serverUrl, mainnetProvider, userRole }) {
   const [builders, setBuilders] = useState([]);
+  const [selectedCohort, setSelectedCohort] = useState("");
+  const [cohorts, setCohorts] = useState([]);
+
   const [isLoadingBuilders, setIsLoadingBuilders] = useState(false);
   const isAdmin = userRole === USER_ROLES.admin;
   const isLoggedIn = userRole !== null && userRole !== USER_ROLES.anonymous;
 
   const { baseColor } = useCustomColorModes();
 
+  /// COHORT FILTERING
+  const cohortFiltering = (rows, id, filterValue) => {
+    console.log("FilterValue", filterValue);
+
+    return rows.filter(row => {
+      const rowValue = row.values[id];
+      console.log(rowValue.builderCohort);
+      console.log(isInCohort(rowValue, filterValue));
+      return rowValue !== undefined ? isInCohort(rowValue, filterValue) : true;
+    });
+  };
+
+  const isInCohort = (builder, filterValue) => {
+    if (!builder.builderCohort) return false;
+
+    return builder.builderCohort.some(cohort => {
+      return cohort.name === filterValue;
+    });
+  };
+
+  const CohortColumnFilter = ({ column: { filterValue, setFilter } }) => {
+    return (
+      <Select
+        placeholder="All Cohorts"
+        onChange={e => {
+          setFilter(e.target.value || undefined);
+        }}
+        value={filterValue || ""}
+      >
+        <option value="">All Cohorts</option>
+        {cohorts.map((cohort, index) => (
+          <option key={index} value={cohort.name}>
+            {cohort.name}
+          </option>
+        ))}
+      </Select>
+    );
+  };
+
+  /// END COHORT FILTERING
+
   const ensFiltering = (rows, id, filterValue) => {
     if (filterValue.length < 3) {
       return rows;
     }
+    console.log("FilterValue", filterValue);
 
     return rows.filter(row => {
       const rowValue = row.values[id];
@@ -178,7 +224,10 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
         {
           Header: "Cohort",
           accessor: "stream",
-          disableFilters: true,
+          // disableFilters: true,
+          canFilter: true,
+          Filter: CohortColumnFilter,
+          filter: cohortFiltering,
           // Sorting by stream cap for now.
           sortType: (rowA, rowB) => {
             // Sort this by builderCohort
@@ -241,6 +290,14 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
     fetchBuilders();
   }, [serverUrl]);
 
+  useEffect(() => {
+    async function fetchCohorts() {
+      const cohorts = await getAllCohorts();
+      setCohorts(cohorts);
+    }
+    fetchCohorts();
+  }, [serverUrl]);
+
   const {
     getTableProps,
     getTableBodyProps,
@@ -268,6 +325,7 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
   );
 
   const ensFilter = headerGroups[0].headers[0];
+  const cohortFilter = headerGroups[0].headers[3];
 
   return (
     <Container maxW="container.xl">
@@ -290,6 +348,15 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
                 <InputRightElement pointerEvents="none" color="gray.300" fontSize="1.2em" children={<SearchIcon />} />
               </InputGroup>
             </Box>
+            <Box mb={4}>{cohortFilter.render("Filter")}</Box>
+            <button
+              type="button"
+              onClick={() => {
+                console.log(cohortFilter);
+              }}
+            >
+              Click Me
+            </button>
           </Center>
           <Table
             {...getTableProps()}

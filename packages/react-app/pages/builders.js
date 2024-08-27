@@ -38,7 +38,8 @@ import StreamTableCell from "../components/StreamTableCell";
 import MetaSeo from "../components/MetaSeo";
 import BuilderFlags from "../components/builder/BuilderFlags";
 import useCustomColorModes from "../hooks/useCustomColorModes";
-import { getAllCohorts, getAllBuilders } from "../data/api/builder";
+import { getAllCohorts } from "../data/api/builder";
+import CohortFilterColumn from "../components/CohortColumnFilter";
 
 const serverPath = "/builders";
 
@@ -130,9 +131,16 @@ const isValueOnEnsOrSocials = (builder, filterValue) => {
   return isOnEns || isOnSocials;
 };
 
+const isInCohort = (builder, filterValue) => {
+  if (!builder.builderCohort) return false;
+
+  return builder.builderCohort.some(cohort => {
+    return cohort.name === filterValue;
+  });
+};
+
 export default function BuilderListView({ serverUrl, mainnetProvider, userRole }) {
   const [builders, setBuilders] = useState([]);
-  const [selectedCohort, setSelectedCohort] = useState("");
   const [cohorts, setCohorts] = useState([]);
 
   const [isLoadingBuilders, setIsLoadingBuilders] = useState(false);
@@ -141,48 +149,12 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
 
   const { baseColor } = useCustomColorModes();
 
-  /// COHORT FILTERING
   const cohortFiltering = (rows, id, filterValue) => {
-    console.log("FilterValue", filterValue);
-
     return rows.filter(row => {
       const rowValue = row.values[id];
-      console.log(rowValue.builderCohort);
-      console.log(isInCohort(rowValue, filterValue));
       return rowValue !== undefined ? isInCohort(rowValue, filterValue) : true;
     });
   };
-
-  const isInCohort = (builder, filterValue) => {
-    if (!builder.builderCohort) return false;
-
-    return builder.builderCohort.some(cohort => {
-      return cohort.name === filterValue;
-    });
-  };
-
-  const CohortColumnFilter = ({ column: { filterValue, setFilter } }) => {
-    const { baseColor } = useCustomColorModes();
-    return (
-      <Select
-        placeholder="All Cohorts"
-        onChange={e => {
-          setFilter(e.target.value || undefined);
-        }}
-        value={filterValue || ""}
-        bgColor={baseColor}
-      >
-        <option value="">All Cohorts</option>
-        {cohorts.map((cohort, index) => (
-          <option key={index} value={cohort.name}>
-            {cohort.name}
-          </option>
-        ))}
-      </Select>
-    );
-  };
-
-  /// END COHORT FILTERING
 
   const ensFiltering = (rows, id, filterValue) => {
     if (filterValue.length < 3) {
@@ -196,6 +168,27 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
     });
   };
 
+  const CohortFilterComponent = ({ column }) => (
+    <CohortFilterColumn filterValue={column.filterValue} setFilter={column.setFilter} cohorts={cohorts} />
+  );
+
+  const BuilderSocialLinksCellComponent = ({ value }) => <BuilderSocialLinksCell builder={value} isAdmin={isAdmin} />;
+  const BuilderAddressCellComponent = ({ value }) => (
+    <BuilderAddressCell builder={value} mainnetProvider={mainnetProvider} />
+  );
+  const BuilderStatusCellComponent = ({ value }) => <BuilderStatusCell status={value} />;
+  const BuilderBuildsCellComponent = ({ value }) => <BuilderBuildsCell buildCount={value} />;
+  const StreamTableCellComponent = ({ value }) => {
+    return value?.graduated?.status ? "" : <StreamTableCell builder={value} />;
+  };
+  const LastActivityCellComponent = ({ value }) => {
+    return (
+      <Text whiteSpace="nowrap">
+        <DateWithTooltip timestamp={value} />
+      </Text>
+    );
+  };
+
   const columns = useMemo(
     () => {
       const allColumns = [
@@ -206,28 +199,27 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
           canFilter: true,
           Filter: EnsColumnFilter,
           filter: ensFiltering,
-          Cell: ({ value }) => <BuilderAddressCell builder={value} mainnetProvider={mainnetProvider} />,
+          Cell: BuilderAddressCellComponent,
         },
         {
           Header: "Status",
           accessor: "status",
           disableSortBy: true,
           disableFilters: true,
-          Cell: ({ value }) => <BuilderStatusCell status={value} />,
+          Cell: BuilderStatusCellComponent,
         },
         {
           Header: "Builds",
           accessor: "builds",
           sortDescFirst: true,
           disableFilters: true,
-          Cell: ({ value }) => <BuilderBuildsCell buildCount={value} />,
+          Cell: BuilderBuildsCellComponent,
         },
         {
           Header: "Cohort",
           accessor: "stream",
-          // disableFilters: true,
           canFilter: true,
-          Filter: CohortColumnFilter,
+          Filter: CohortFilterComponent,
           filter: cohortFiltering,
           // Sorting by stream cap for now.
           sortType: (rowA, rowB) => {
@@ -236,25 +228,21 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
             const lengthB = rowB.values?.stream?.builderCohort?.length || 0;
             return lengthA > lengthB ? 1 : -1;
           },
-          Cell: ({ value }) => (value?.graduated?.status ? "" : <StreamTableCell builder={value} />),
+          Cell: StreamTableCellComponent,
         },
         {
           Header: "Socials",
           accessor: "socials",
           disableSortBy: true,
           disableFilters: true,
-          Cell: ({ value }) => <BuilderSocialLinksCell builder={value} isAdmin={isAdmin} />,
+          Cell: BuilderSocialLinksCellComponent,
         },
         {
           Header: "Last Activity",
           accessor: "lastActivity",
           sortDescFirst: true,
           disableFilters: true,
-          Cell: ({ value }) => (
-            <Text whiteSpace="nowrap">
-              <DateWithTooltip timestamp={value} />
-            </Text>
-          ),
+          Cell: LastActivityCellComponent,
         },
       ];
 

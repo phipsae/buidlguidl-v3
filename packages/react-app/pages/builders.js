@@ -19,7 +19,6 @@ import {
   chakra,
   Flex,
   Select,
-  Badge,
   Tooltip,
   HStack,
   Input,
@@ -163,6 +162,7 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
   };
 
   const CohortColumnFilter = ({ column: { filterValue, setFilter } }) => {
+    const { baseColor } = useCustomColorModes();
     return (
       <Select
         placeholder="All Cohorts"
@@ -170,6 +170,7 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
           setFilter(e.target.value || undefined);
         }}
         value={filterValue || ""}
+        bgColor={baseColor}
       >
         <option value="">All Cohorts</option>
         {cohorts.map((cohort, index) => (
@@ -342,21 +343,22 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
             <Box mb={2}>
               <chakra.strong mr={2}>Total builders:</chakra.strong> {builders.length}
             </Box>
-            <Box>
-              <InputGroup>
+
+            <Flex direction={{ base: "column", md: "row" }} alignItems="center" mb={4}>
+              <InputGroup
+                mr={{ md: 4 }}
+                mb={{ base: 4, md: 0 }}
+                width={{ base: "100%", md: "auto" }}
+                height="40px" // Set consistent height
+              >
                 {ensFilter.render("Filter")}
                 <InputRightElement pointerEvents="none" color="gray.300" fontSize="1.2em" children={<SearchIcon />} />
               </InputGroup>
-            </Box>
-            <Box mb={4}>{cohortFilter.render("Filter")}</Box>
-            <button
-              type="button"
-              onClick={() => {
-                console.log(cohortFilter);
-              }}
-            >
-              Click Me
-            </button>
+
+              <Box width={{ base: "100%", md: "auto" }} height="40px">
+                {cohortFilter.render("Filter")}
+              </Box>
+            </Flex>
           </Center>
           <Table
             {...getTableProps()}

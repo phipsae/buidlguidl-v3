@@ -227,7 +227,7 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
           Cell: BuilderBuildsCellComponent,
         },
         {
-          Header: "Stream",
+          Header: "Batch",
           accessor: "stream",
           disableFilters: true,
           Filter: BatchFilterComponent,
@@ -282,7 +282,7 @@ export default function BuilderListView({ serverUrl, mainnetProvider, userRole }
     {
       columns,
       data: builders,
-      initialState: { pageIndex: 0, pageSize: 25, sortBy: useMemo(() => [{ id: "stream", desc: true }], []) },
+      initialState: { pageIndex: 0, pageSize: 25, sortBy: useMemo(() => [{ id: "stream", desc: false }], []) },
     },
     useFilters,
     useSortBy,
